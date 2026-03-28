@@ -79,3 +79,10 @@
 - [x] Verify all agent modules route through claude.ts (no hardcoded models elsewhere)
 - [x] Run all 31 tests and confirm they pass
 - [x] Save checkpoint
+
+## Fix: Switch to Free Built-in LLM (No API Key Required)
+- [x] Rewrite claude.ts to use built-in Manus invokeLLM instead of Anthropic SDK
+- [x] Remove ANTHROPIC_API_KEY dependency from agent flow
+- [x] Verify planner, executor, verifier, and all tools still work
+- [x] Run all tests and confirm they pass
+- [x] Save checkpoint
