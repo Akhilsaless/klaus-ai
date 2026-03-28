@@ -71,3 +71,11 @@
 - [x] Backend: never expose API key to client
 - [x] Backend: input validation on all endpoints
 - [x] Backend: detailed error logging
+
+## Fix: Claude Model 404 Error
+- [x] Replace invalid model "claude-3-5-haiku-20241022" with "claude-3-5-sonnet-latest"
+- [x] Add fallback model "claude-3-haiku-20240307" on 404/model_not_found errors
+- [x] Log model errors clearly with model name and status code
+- [x] Verify all agent modules route through claude.ts (no hardcoded models elsewhere)
+- [x] Run all 31 tests and confirm they pass
+- [x] Save checkpoint
