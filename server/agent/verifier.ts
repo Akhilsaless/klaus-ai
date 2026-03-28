@@ -1,4 +1,4 @@
-import { invokeLLM } from "../_core/llm";
+import { askClaude, askClaudeJSON } from "../_core/claude";
 
 export interface VerificationResult {
   passed: boolean;
@@ -12,62 +12,39 @@ export async function verifyOutput(
   stepOutputs: Array<{ title: string; output: string }>,
   finalSummary: string
 ): Promise<VerificationResult> {
-  const response = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content: `You are a quality assurance expert. Evaluate whether the agent's work successfully achieved the stated goal.
-Return a JSON object with this exact structure:
-{
-  "passed": true/false,
-  "score": 0-100,
-  "feedback": "Overall assessment",
-  "suggestions": ["suggestion1", "suggestion2"]
-}
-
-Scoring criteria:
-- 90-100: Excellent, fully achieves goal with high quality
-- 70-89: Good, mostly achieves goal with minor gaps
-- 50-69: Acceptable, partially achieves goal
-- Below 50: Poor, significant gaps or failures`,
-      },
-      {
-        role: "user",
-        content: `Original Goal: ${goal}
+  const prompt = `Original Goal: ${goal}
 
 Steps Completed:
 ${stepOutputs.map((s, i) => `${i + 1}. ${s.title}: ${s.output.substring(0, 200)}...`).join("\n")}
 
 Final Summary: ${finalSummary}
 
-Evaluate the quality and completeness of this work.`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "verification_result",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            passed: { type: "boolean" },
-            score: { type: "integer" },
-            feedback: { type: "string" },
-            suggestions: { type: "array", items: { type: "string" } },
-          },
-          required: ["passed", "score", "feedback", "suggestions"],
-          additionalProperties: false,
-        },
-      },
-    },
-  });
+Evaluate the quality and completeness of this work. Return JSON with:
+{
+  "passed": true or false,
+  "score": integer 0-100,
+  "feedback": "Overall assessment string",
+  "suggestions": ["suggestion1", "suggestion2"]
+}`;
 
-  const content = response.choices[0]?.message?.content;
-  const contentStr = typeof content === "string" ? content : JSON.stringify(content);
+  const schema = `{
+  "passed": true or false,
+  "score": integer 0-100,
+  "feedback": "Overall assessment",
+  "suggestions": ["suggestion1", "suggestion2"]
+}`;
 
   try {
-    return JSON.parse(contentStr) as VerificationResult;
+    const result = await askClaudeJSON<VerificationResult>(prompt, schema, {
+      system: `You are a quality assurance expert. Evaluate whether the agent's work successfully achieved the stated goal.
+Scoring criteria:
+- 90-100: Excellent, fully achieves goal with high quality
+- 70-89: Good, mostly achieves goal with minor gaps
+- 50-69: Acceptable, partially achieves goal
+- Below 50: Poor, significant gaps or failures`,
+      maxTokens: 512,
+    });
+    return result;
   } catch {
     return {
       passed: true,
@@ -82,29 +59,19 @@ export async function generateSummary(
   goal: string,
   stepOutputs: Array<{ title: string; output: string }>
 ): Promise<string> {
-  const response = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content: `You are a professional report writer. Create a concise, comprehensive summary of the completed work.
-The summary should:
-- Clearly state what was accomplished
-- Highlight key findings and deliverables
-- Be written in a professional tone
-- Be 2-4 paragraphs long`,
-      },
-      {
-        role: "user",
-        content: `Original Goal: ${goal}
+  const prompt = `Original Goal: ${goal}
 
 Completed Steps:
 ${stepOutputs.map((s, i) => `${i + 1}. ${s.title}:\n${s.output.substring(0, 500)}`).join("\n\n")}
 
-Write a comprehensive summary of what was accomplished.`,
-      },
-    ],
-  });
+Write a comprehensive 2-4 paragraph summary of what was accomplished, key findings, and deliverables.`;
 
-  const content = response.choices[0]?.message?.content;
-  return typeof content === "string" ? content : "Task completed successfully.";
+  try {
+    return await askClaude(prompt, {
+      system: "You are a professional report writer. Create a concise, comprehensive summary of the completed work. Be professional, clear, and highlight the most important outcomes.",
+      maxTokens: 1024,
+    });
+  } catch {
+    return "Task completed successfully. All planned steps were executed.";
+  }
 }

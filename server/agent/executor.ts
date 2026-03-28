@@ -130,17 +130,20 @@ export async function runAgentLoop(
         if (result.success) {
           stepOutputs.push({ title: step.title, output: result.output });
 
-          // Save output record
+          // Save output record — store file content in content column, metadata for file info
           await createOutput({
             taskId,
             stepId: dbStep.id,
             type: getOutputType(step.tool as ToolName),
             title: step.title,
-            content: result.output,
-            fileContent: result.fileContent,
+            content: result.fileContent ?? result.output,
             mimeType: result.mimeType,
-            metadata: result.metadata,
-          } as Parameters<typeof createOutput>[0]);
+            metadata: {
+              ...(result.metadata ?? {}),
+              fileName: result.fileName,
+              preview: result.output.substring(0, 500),
+            },
+          });
 
           emit("step_complete", {
             stepId: dbStep.id,
@@ -150,7 +153,7 @@ export async function runAgentLoop(
             data: {
               tool: step.tool,
               outputPreview: result.output.substring(0, 200),
-              hasFile: !!result.fileContent,
+              hasFile: !!(result.fileContent ?? result.fileName),
             },
           });
         } else {

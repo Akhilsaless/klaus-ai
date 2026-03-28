@@ -1,4 +1,4 @@
-import { invokeLLM } from "../_core/llm";
+import { askClaudeJSON } from "../_core/claude";
 import type { ToolName } from "./tools";
 
 export interface AgentStep {
@@ -25,15 +25,7 @@ Available tools:
 - text_writer: Write articles, reports, proposals, etc. Params: type, topic, requirements
 `;
 
-export async function planGoal(goal: string, context: string): Promise<AgentPlan> {
-  const response = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content: `You are an expert AI agent planner. Break down complex goals into clear, executable steps.
-Each step must use exactly one tool from the available tools list.
-Return a JSON object with this exact structure:
-{
+const PLAN_SCHEMA = `{
   "title": "Brief task title (max 60 chars)",
   "estimatedDuration": "e.g. 2-3 minutes",
   "steps": [
@@ -45,67 +37,56 @@ Return a JSON object with this exact structure:
       "toolParams": { "param1": "value1" }
     }
   ]
-}
+}`;
+
+export async function planGoal(goal: string, context: string): Promise<AgentPlan> {
+  console.log(`[Planner] Planning goal: ${goal.substring(0, 80)}...`);
+
+  const prompt = `You are an expert AI agent planner. Break down the following goal into clear, executable steps.
+
+${TOOL_DESCRIPTIONS}
 
 Rules:
-- Create 3-7 steps maximum
+- Create 3-6 steps maximum
+- Each step must use exactly one tool from the list above
 - Each step must be specific and actionable
-- Choose the most appropriate tool for each step
-- toolParams must match the tool's expected parameters
+- toolParams must match the tool's expected parameters exactly
 - Steps should build on each other logically
+- The title should be concise and descriptive
 
-${TOOL_DESCRIPTIONS}`,
-      },
-      {
-        role: "user",
-        content: `Goal: ${goal}\nContext: ${context}\n\nCreate a detailed execution plan as JSON.`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "agent_plan",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            estimatedDuration: { type: "string" },
-            steps: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  stepIndex: { type: "integer" },
-                  title: { type: "string" },
-                  description: { type: "string" },
-                  tool: { type: "string" },
-                  toolParams: {
-                    type: "object",
-                    additionalProperties: { type: "string" },
-                  },
-                },
-                required: ["stepIndex", "title", "description", "tool", "toolParams"],
-                additionalProperties: false,
-              },
-            },
-          },
-          required: ["title", "estimatedDuration", "steps"],
-          additionalProperties: false,
-        },
-      },
-    },
+${context ? `Previous context:\n${context}\n` : ""}
+
+Goal: ${goal}
+
+Create a detailed execution plan as JSON matching the schema exactly.`;
+
+  const plan = await askClaudeJSON<AgentPlan>(prompt, PLAN_SCHEMA, {
+    system: "You are an expert AI agent planner. Always respond with valid JSON only.",
+    maxTokens: 2048,
   });
 
-  const content = response.choices[0]?.message?.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("Planner returned no content");
+  // Validate and sanitize the plan
+  if (!plan.title || !Array.isArray(plan.steps) || plan.steps.length === 0) {
+    throw new Error("Planner returned an invalid plan structure");
   }
 
-  try {
-    const parsed = JSON.parse(content) as AgentPlan;
-    return parsed;
-  } catch {
-    throw new Error("Failed to parse agent plan from LLM response");
-  }
+  // Ensure stepIndex is sequential
+  plan.steps = plan.steps.map((step, i) => ({
+    ...step,
+    stepIndex: i,
+    tool: (step.tool as string) in VALID_TOOLS ? step.tool : "text_writer",
+    toolParams: step.toolParams ?? {},
+  }));
+
+  console.log(`[Planner] Plan ready: "${plan.title}" with ${plan.steps.length} steps`);
+  return plan;
 }
+
+const VALID_TOOLS: Record<string, boolean> = {
+  web_research: true,
+  code_generator: true,
+  file_generator: true,
+  email_generator: true,
+  data_analysis: true,
+  text_writer: true,
+};

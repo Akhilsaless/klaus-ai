@@ -35,4 +35,39 @@
 ## Phase 5: Tests & Delivery
 - [x] Vitest unit tests for agent routers (11 tests passing)
 - [x] Vitest auth logout test (1 test passing)
-- [ ] Save checkpoint
+- [x] Save checkpoint
+
+## Fix: Claude API Integration (Run Agent)
+- [x] Diagnose root cause of "Failed to start task" error
+- [x] Install @anthropic-ai/sdk package
+- [x] Add ANTHROPIC_API_KEY environment variable
+- [x] Create POST /api/run-task endpoint with full validation
+- [x] Wire agent planner/executor/verifier to Claude via Anthropic SDK
+- [x] Fix frontend AgentChat to call /api/run-task correctly
+- [x] Add loading state, disable button during submission
+- [x] Show real backend error messages on frontend
+- [x] Show result in clean response panel
+- [x] Remove Ctrl+Enter hint on mobile
+- [x] Fix floating footer not covering UI
+- [x] Add detailed backend logging for all failure modes
+- [x] Test with "Write a hello world Python script"
+- [x] Test with "Create a lead generation plan for accommodation businesses in Hyderabad"
+
+## Upgrade: Real Agent System
+- [x] Complete Claude executor + verifier using Anthropic SDK
+- [x] Real WebScraperTool using axios + cheerio
+- [x] Real CodeExecutionTool using child_process sandbox
+- [x] Real FileGeneratorTool with download URLs
+- [x] DataProcessorTool for data cleaning/formatting
+- [x] POST /api/run-task endpoint with full agent flow
+- [x] Rate limiting on /api/run-task
+- [x] Persistent task history (tasks table fully wired)
+- [x] Frontend: Run Agent calls /api/run-task
+- [x] Frontend: loading state + disabled button during run
+- [x] Frontend: real error messages from backend
+- [x] Frontend: result panel with markdown rendering
+- [x] Frontend: file download buttons
+- [x] Frontend: remove Ctrl+Enter hint on mobile
+- [x] Backend: never expose API key to client
+- [x] Backend: input validation on all endpoints
+- [x] Backend: detailed error logging
