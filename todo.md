@@ -86,3 +86,22 @@
 - [x] Verify planner, executor, verifier, and all tools still work
 - [x] Run all tests and confirm they pass
 - [x] Save checkpoint
+
+## Upgrade: Mobile/PWA + Gmail + Google Calendar Connectors
+- [ ] Add PWA manifest.json with icons, theme color, and display mode
+- [ ] Add service worker for offline caching and install prompt
+- [ ] Mobile-optimized bottom navigation bar for /agent, /dashboard, /connectors
+- [ ] Add viewport meta and touch-friendly tap targets throughout
+- [ ] Gmail connector: OAuth token storage in DB (per user)
+- [ ] Gmail tool: read inbox (last 10 emails)
+- [ ] Gmail tool: send email via agent task
+- [ ] Gmail tool: draft email and show preview before sending
+- [ ] Google Calendar connector: OAuth token storage in DB
+- [ ] Calendar tool: list upcoming events
+- [ ] Calendar tool: create new event via agent task
+- [ ] Connectors page (/connectors): list all integrations with connect/disconnect buttons
+- [ ] Show connector status (connected/disconnected) with last sync time
+- [ ] Wire Gmail + Calendar tools into agent executor automatically when connected
+- [ ] Add connector status to Dashboard sidebar
+- [ ] Run all tests
+- [ ] Save checkpoint
