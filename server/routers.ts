@@ -1,18 +1,28 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
+  protectedProcedure,
+  publicProcedure,
+  router,
+  superAdminProcedure,
+} from "./_core/trpc";
+import {
+  createAuditEvent,
   createChatMessage,
   createTask,
   deleteTask,
   getChatMessagesByUserId,
   getLogsByTaskId,
   getOutputsByTaskId,
+  getRecentAuditEvents,
   getStepsByTaskId,
   getTaskById,
   getTasksByUserId,
+  listAIProviderConfigs,
+  upsertAIProviderConfig,
 } from "./db";
+import { getProviderHealth } from "./ai/router";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -78,7 +88,6 @@ export const appRouter = router({
           goal: input.goal,
           status: "pending",
         });
-        // Save user message
         await createChatMessage({
           taskId: task?.id,
           userId: ctx.user.id,
@@ -114,6 +123,56 @@ export const appRouter = router({
           content: input.content,
         });
       }),
+  }),
+
+  // ─── Super Admin AI Brain ──────────────────────────────────────────────────
+  aiAdmin: router({
+    providerHealth: superAdminProcedure.query(() => getProviderHealth()),
+
+    providerConfigs: superAdminProcedure.query(async () => {
+      return listAIProviderConfigs();
+    }),
+
+    upsertProviderConfig: superAdminProcedure
+      .input(
+        z.object({
+          provider: z.enum(["free", "openai"]),
+          enabled: z.boolean(),
+          model: z.string().max(128).optional(),
+          secretRef: z.string().max(512).optional(),
+          settings: z.record(z.string(), z.unknown()).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await upsertAIProviderConfig({
+          provider: input.provider,
+          enabled: input.enabled ? 1 : 0,
+          model: input.model,
+          secretRef: input.secretRef,
+          settings: input.settings ?? {},
+          updatedByUserId: ctx.user.id,
+        });
+
+        await createAuditEvent({
+          userId: ctx.user.id,
+          action: "ai_provider_config.updated",
+          resourceType: "ai_provider",
+          resourceId: input.provider,
+          risk: "medium",
+          result: "allowed",
+          metadata: {
+            enabled: input.enabled,
+            model: input.model ?? null,
+            hasSecretRef: Boolean(input.secretRef),
+          },
+        });
+
+        return { success: true } as const;
+      }),
+
+    auditEvents: superAdminProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).default(100) }))
+      .query(async ({ input }) => getRecentAuditEvents(input.limit)),
   }),
 });
 
