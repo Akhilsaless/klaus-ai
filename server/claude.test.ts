@@ -1,49 +1,32 @@
-import { describe, expect, it, afterEach, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { validateAnthropicKey } from "./_core/claude";
+import { getProviderHealth, selectProvider } from "./ai/router";
 
-describe("Anthropic API key validation", () => {
-  it("should detect a configured API key starts with sk-ant-", () => {
+describe("Klaus AI provider foundation", () => {
+  it("keeps routine work on the free provider", () => {
+    expect(selectProvider({ taskClass: "routine" })).toBe("free");
+  });
+
+  it("allows explicitly forcing the free provider", () => {
+    expect(
+      selectProvider({ taskClass: "critical_verification", forceProvider: "free" })
+    ).toBe("free");
+  });
+
+  it("reports provider health without exposing secrets", () => {
+    const health = getProviderHealth();
+    expect(health.map((item) => item.provider)).toEqual(["free", "openai"]);
+    expect(JSON.stringify(health)).not.toContain("apiKey");
+    expect(JSON.stringify(health)).not.toContain("OPENAI_API_KEY");
+  });
+
+  it("keeps the legacy validation facade tied to the free runtime", () => {
     const result = validateAnthropicKey();
-    if (process.env.ANTHROPIC_API_KEY) {
-      // Key is set — it should be valid format
+    if (process.env.BUILT_IN_FORGE_API_KEY) {
       expect(result.valid).toBe(true);
-      expect(result.error).toBeUndefined();
     } else {
-      // No key set — should report missing
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("not set");
+      expect(result.error).toContain("free provider unavailable");
     }
-  });
-
-  describe("with invalid key format", () => {
-    const originalKey = process.env.ANTHROPIC_API_KEY;
-
-    beforeEach(() => {
-      process.env.ANTHROPIC_API_KEY = "invalid-key-format";
-    });
-
-    afterEach(() => {
-      if (originalKey) {
-        process.env.ANTHROPIC_API_KEY = originalKey;
-      } else {
-        delete process.env.ANTHROPIC_API_KEY;
-      }
-    });
-
-    it("should reject keys that don't start with sk-ant-", () => {
-      // validateAnthropicKey reads from ENV which is already loaded,
-      // so we test the logic directly
-      const key = process.env.ANTHROPIC_API_KEY ?? "";
-      const isValid = key.startsWith("sk-ant-");
-      expect(isValid).toBe(false);
-    });
-  });
-
-  it("ANTHROPIC_API_KEY environment variable is present", () => {
-    // This test ensures the secret was properly injected
-    const key = process.env.ANTHROPIC_API_KEY;
-    expect(key).toBeDefined();
-    expect(key).not.toBe("");
-    expect(typeof key).toBe("string");
   });
 });

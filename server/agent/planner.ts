@@ -63,14 +63,13 @@ Create a detailed execution plan as JSON matching the schema exactly.`;
   const plan = await askClaudeJSON<AgentPlan>(prompt, PLAN_SCHEMA, {
     system: "You are an expert AI agent planner. Always respond with valid JSON only.",
     maxTokens: 2048,
+    taskClass: "complex_planning",
   });
 
-  // Validate and sanitize the plan
   if (!plan.title || !Array.isArray(plan.steps) || plan.steps.length === 0) {
     throw new Error("Planner returned an invalid plan structure");
   }
 
-  // Ensure stepIndex is sequential
   plan.steps = plan.steps.map((step, i) => ({
     ...step,
     stepIndex: i,

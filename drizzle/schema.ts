@@ -15,7 +15,15 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", [
+    "user",
+    "reviewer",
+    "manager",
+    "admin",
+    "super_admin",
+  ])
+    .default("user")
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -151,3 +159,38 @@ export const chatMessages = mysqlTable("chat_messages", {
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+// ─── AI Provider Configuration Metadata ───────────────────────────────────────
+// API keys are intentionally NOT stored here. Store only secret-manager/env refs.
+export const aiProviderConfigs = mysqlTable("ai_provider_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: mysqlEnum("provider", ["free", "openai"]).notNull(),
+  enabled: int("enabled").default(1).notNull(),
+  model: varchar("model", { length: 128 }),
+  secretRef: varchar("secretRef", { length: 512 }),
+  settings: json("settings").$type<Record<string, unknown>>().default({}),
+  updatedByUserId: int("updatedByUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AIProviderConfig = typeof aiProviderConfigs.$inferSelect;
+export type InsertAIProviderConfig = typeof aiProviderConfigs.$inferInsert;
+
+// ─── Security / Product Audit Events ─────────────────────────────────────────
+export const auditEvents = mysqlTable("audit_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  action: varchar("action", { length: 128 }).notNull(),
+  resourceType: varchar("resourceType", { length: 128 }),
+  resourceId: varchar("resourceId", { length: 256 }),
+  risk: mysqlEnum("risk", ["low", "medium", "high", "critical"])
+    .default("low")
+    .notNull(),
+  result: mysqlEnum("result", ["allowed", "denied", "failed"]).notNull(),
+  metadata: json("metadata").$type<Record<string, unknown>>().default({}),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AuditEvent = typeof auditEvents.$inferSelect;
+export type InsertAuditEvent = typeof auditEvents.$inferInsert;

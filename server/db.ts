@@ -1,6 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
+  InsertAIProviderConfig,
+  InsertAuditEvent,
   InsertChatMessage,
   InsertLog,
   InsertMemory,
@@ -8,6 +10,8 @@ import {
   InsertStep,
   InsertTask,
   InsertUser,
+  aiProviderConfigs,
+  auditEvents,
   chatMessages,
   logs,
   memory,
@@ -58,8 +62,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     values.role = user.role;
     updateSet.role = user.role;
   } else if (user.openId === ENV.ownerOpenId) {
-    values.role = "admin";
-    updateSet.role = "admin";
+    values.role = "super_admin";
+    updateSet.role = "super_admin";
   }
 
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
@@ -231,4 +235,41 @@ export async function getChatMessagesByTaskId(taskId: number) {
     .from(chatMessages)
     .where(eq(chatMessages.taskId, taskId))
     .orderBy(chatMessages.createdAt);
+}
+
+// ─── AI Provider Configuration ────────────────────────────────────────────────
+export async function listAIProviderConfigs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(aiProviderConfigs).orderBy(aiProviderConfigs.provider);
+}
+
+export async function upsertAIProviderConfig(data: InsertAIProviderConfig) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .insert(aiProviderConfigs)
+    .values(data)
+    .onDuplicateKeyUpdate({
+      set: {
+        enabled: data.enabled,
+        model: data.model,
+        secretRef: data.secretRef,
+        settings: data.settings,
+        updatedByUserId: data.updatedByUserId,
+      },
+    });
+}
+
+// ─── Audit Events ─────────────────────────────────────────────────────────────
+export async function createAuditEvent(data: InsertAuditEvent) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(auditEvents).values(data);
+}
+
+export async function getRecentAuditEvents(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(auditEvents).orderBy(desc(auditEvents.createdAt)).limit(limit);
 }
