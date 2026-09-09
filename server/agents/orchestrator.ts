@@ -55,14 +55,16 @@ export function buildDelegationPlan(
   }));
 
   const agents = new Set<AgentId>(["executive"]);
-  for (const step of delegated) agents.add(step.agentId);
+  for (let i = 0; i < delegated.length; i++) {
+    agents.add(delegated[i].agentId);
+  }
   if (delegated.some((step) => step.requiresVerifier)) agents.add("security");
 
   return {
     executiveAgentId: "executive",
     verifierAgentId: "security",
     steps: delegated,
-    agentsInvolved: [...agents],
+    agentsInvolved: Array.from(agents),
   };
 }
 
