@@ -95,7 +95,7 @@ export const workflowRouter = router({
         description: learned.description,
         status: "draft",
         autonomy: session.mode === "shadow" ? "observe" : "prepare",
-        steps: learned.steps,
+        steps: learned.steps.map((step) => ({ ...step } as Record<string, unknown>)),
         triggers: [],
         confidence: learned.confidence,
         reviewRequired: 1,
