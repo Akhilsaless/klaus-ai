@@ -22,7 +22,9 @@ import {
   listAIProviderConfigs,
   upsertAIProviderConfig,
 } from "./db";
-import { getProviderHealth } from "./ai/router";
+import { decideProvider, getProviderHealth } from "./ai/router";
+import { getProviderDefinitions } from "./ai/registry";
+import { getAIUsageSummary, getRecentAIUsage } from "./ai/telemetry";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -128,6 +130,56 @@ export const appRouter = router({
   // ─── Super Admin AI Brain ──────────────────────────────────────────────────
   aiAdmin: router({
     providerHealth: superAdminProcedure.query(() => getProviderHealth()),
+    providerRegistry: superAdminProcedure.query(() => getProviderDefinitions()),
+    usageSummary: superAdminProcedure.query(() => getAIUsageSummary()),
+    recentUsage: superAdminProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).default(100) }))
+      .query(({ input }) => getRecentAIUsage(input.limit)),
+
+    routePreview: superAdminProcedure
+      .input(
+        z.object({
+          prompt: z.string().min(1).max(4000),
+          taskClass: z
+            .enum([
+              "routine",
+              "classification",
+              "extraction",
+              "summarization",
+              "simple_planning",
+              "complex_planning",
+              "critical_verification",
+              "computer_use",
+              "premium_voice",
+            ])
+            .optional(),
+          costPreference: z.enum(["lowest", "balanced", "quality"]).optional(),
+          latencyPreference: z.enum(["fastest", "balanced", "quality"]).optional(),
+          privacy: z.enum(["standard", "sensitive", "local_preferred"]).optional(),
+          requireCapabilities: z
+            .array(
+              z.enum([
+                "text",
+                "json",
+                "reasoning",
+                "verification",
+                "computer_use",
+                "realtime_voice",
+              ])
+            )
+            .max(6)
+            .optional(),
+        })
+      )
+      .query(({ input }) =>
+        decideProvider(input.prompt, {
+          taskClass: input.taskClass,
+          costPreference: input.costPreference,
+          latencyPreference: input.latencyPreference,
+          privacy: input.privacy,
+          requireCapabilities: input.requireCapabilities,
+        })
+      ),
 
     providerConfigs: superAdminProcedure.query(async () => {
       return listAIProviderConfigs();
