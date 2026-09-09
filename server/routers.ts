@@ -29,6 +29,7 @@ import { getAgentCatalog } from "./agents/catalog";
 import { buildDelegationPlan } from "./agents/orchestrator";
 import { decideActionPolicy } from "./agents/policy";
 import { computerRouter } from "./computer/router";
+import { deviceRouter } from "./devices/router";
 import { workflowRouter } from "./workflows/router";
 import { z } from "zod";
 
@@ -36,6 +37,7 @@ export const appRouter = router({
   system: systemRouter,
   workflows: workflowRouter,
   computer: computerRouter,
+  devices: deviceRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
