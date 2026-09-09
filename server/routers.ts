@@ -28,10 +28,12 @@ import { getAIUsageSummary, getRecentAIUsage } from "./ai/telemetry";
 import { getAgentCatalog } from "./agents/catalog";
 import { buildDelegationPlan } from "./agents/orchestrator";
 import { decideActionPolicy } from "./agents/policy";
+import { workflowRouter } from "./workflows/router";
 import { z } from "zod";
 
 export const appRouter = router({
   system: systemRouter,
+  workflows: workflowRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
@@ -115,8 +117,6 @@ export const appRouter = router({
       ),
   }),
 
-  // Real-agent control plane. Execution is still handled by the existing task loop,
-  // now with specialist delegation and verifier metadata.
   agents: router({
     catalog: protectedProcedure.query(() => getAgentCatalog()),
 
