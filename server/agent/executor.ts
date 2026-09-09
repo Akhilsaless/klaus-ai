@@ -3,11 +3,11 @@ import {
   createOutput,
   createStep,
   getOrCreateMemory,
-  getStepsByTaskId,
   updateMemory,
   updateStep,
   updateTaskStatus,
 } from "../db";
+import { buildDelegationPlan } from "../agents/orchestrator";
 import { planGoal } from "./planner";
 import { executeTool, type ToolName } from "./tools";
 import { generateSummary, verifyOutput } from "./verifier";
@@ -15,6 +15,9 @@ import { generateSummary, verifyOutput } from "./verifier";
 export type AgentEventType =
   | "planning"
   | "plan_ready"
+  | "delegation_ready"
+  | "agent_start"
+  | "agent_complete"
   | "step_start"
   | "step_complete"
   | "step_failed"
@@ -52,7 +55,6 @@ export async function runAgentLoop(
   };
 
   try {
-    // ── Phase 1: Planning ─────────────────────────────────────────────────────
     emit("planning", { message: "Analyzing your goal and creating an execution plan..." });
     await updateTaskStatus(taskId, "planning");
     await log("Starting goal analysis and planning phase");
@@ -63,6 +65,15 @@ export async function runAgentLoop(
       .join("\n");
 
     const plan = await planGoal(goal, contextHistory);
+    const delegation = buildDelegationPlan(
+      plan.steps.map((step) => ({
+        stepIndex: step.stepIndex,
+        title: step.title,
+        description: step.description,
+        tool: step.tool as ToolName,
+      }))
+    );
+
     await updateTaskStatus(taskId, "planning", { plan: plan.steps.map((s) => s.title) });
 
     emit("plan_ready", {
@@ -75,7 +86,16 @@ export async function runAgentLoop(
       },
     });
 
-    // Create all step records
+    emit("delegation_ready", {
+      message: `Executive Agent delegated work across ${delegation.agentsInvolved.length} agents`,
+      data: {
+        executiveAgentId: delegation.executiveAgentId,
+        verifierAgentId: delegation.verifierAgentId,
+        agentsInvolved: delegation.agentsInvolved,
+        steps: delegation.steps,
+      },
+    });
+
     const createdSteps = await Promise.all(
       plan.steps.map((step) =>
         createStep({
@@ -90,30 +110,48 @@ export async function runAgentLoop(
       )
     );
 
-    await log(`Plan ready: ${plan.steps.length} steps to execute`);
+    await log(
+      `Plan ready: ${plan.steps.length} steps; agents: ${delegation.agentsInvolved.join(", ")}`
+    );
 
-    // ── Phase 2: Execution ────────────────────────────────────────────────────
     await updateTaskStatus(taskId, "executing");
     const stepOutputs: Array<{ title: string; output: string }> = [];
 
     for (let i = 0; i < plan.steps.length; i++) {
       const step = plan.steps[i];
       const dbStep = createdSteps[i];
-      if (!dbStep) continue;
+      const delegatedStep = delegation.steps[i];
+      if (!dbStep || !delegatedStep) continue;
+
+      emit("agent_start", {
+        stepId: dbStep.id,
+        stepIndex: i,
+        stepTitle: step.title,
+        message: `${delegatedStep.agentId} agent started: ${step.title}`,
+        data: {
+          agentId: delegatedStep.agentId,
+          requiresVerifier: delegatedStep.requiresVerifier,
+        },
+      });
 
       emit("step_start", {
         stepId: dbStep.id,
         stepIndex: i,
         stepTitle: step.title,
         message: `Executing: ${step.title}`,
-        data: { tool: step.tool, description: step.description },
+        data: {
+          tool: step.tool,
+          description: step.description,
+          agentId: delegatedStep.agentId,
+        },
       });
 
       await updateStep(dbStep.id, { status: "running", startedAt: new Date() });
-      await log(`Step ${i + 1}/${plan.steps.length}: ${step.title} [${step.tool}]`);
+      await log(
+        `Step ${i + 1}/${plan.steps.length}: ${step.title} [${step.tool}] delegated to ${delegatedStep.agentId}`
+      );
 
       try {
-        // Build context from previous outputs
         const context = stepOutputs
           .map((o) => `${o.title}: ${o.output.substring(0, 300)}`)
           .join("\n");
@@ -130,7 +168,6 @@ export async function runAgentLoop(
         if (result.success) {
           stepOutputs.push({ title: step.title, output: result.output });
 
-          // Save output record — store file content in content column, metadata for file info
           await createOutput({
             taskId,
             stepId: dbStep.id,
@@ -142,6 +179,8 @@ export async function runAgentLoop(
               ...(result.metadata ?? {}),
               fileName: result.fileName,
               preview: result.output.substring(0, 500),
+              agentId: delegatedStep.agentId,
+              requiresVerifier: delegatedStep.requiresVerifier,
             },
           });
 
@@ -152,8 +191,20 @@ export async function runAgentLoop(
             message: `Completed: ${step.title}`,
             data: {
               tool: step.tool,
+              agentId: delegatedStep.agentId,
               outputPreview: result.output.substring(0, 200),
               hasFile: !!(result.fileContent ?? result.fileName),
+            },
+          });
+
+          emit("agent_complete", {
+            stepId: dbStep.id,
+            stepIndex: i,
+            stepTitle: step.title,
+            message: `${delegatedStep.agentId} agent completed: ${step.title}`,
+            data: {
+              agentId: delegatedStep.agentId,
+              requiresVerifier: delegatedStep.requiresVerifier,
             },
           });
         } else {
@@ -162,7 +213,7 @@ export async function runAgentLoop(
             stepIndex: i,
             stepTitle: step.title,
             message: `Step failed: ${step.title}`,
-            data: { error: result.output },
+            data: { error: result.output, agentId: delegatedStep.agentId },
           });
         }
       } catch (err) {
@@ -177,26 +228,29 @@ export async function runAgentLoop(
           stepIndex: i,
           stepTitle: step.title,
           message: `Error in step: ${errMsg}`,
+          data: { agentId: delegatedStep.agentId },
         });
         await log(`Step failed: ${step.title} - ${errMsg}`, "error");
       }
     }
 
-    // ── Phase 3: Verification ─────────────────────────────────────────────────
-    emit("verifying", { message: "Verifying results and generating final summary..." });
+    emit("verifying", {
+      message: "Security & Verifier Agent is independently checking the final result...",
+      data: { agentId: "security" },
+    });
     await updateTaskStatus(taskId, "verifying");
-    await log("Starting verification phase");
+    await log("Starting independent verification phase with security agent");
 
     const summary = await generateSummary(goal, stepOutputs);
     const verification = await verifyOutput(goal, stepOutputs, summary);
 
-    // Save summary as output
     await createOutput({
       taskId,
       type: "summary",
       title: "Task Summary",
       content: summary,
       metadata: {
+        verificationAgentId: "security",
         verificationScore: verification.score,
         verificationPassed: verification.passed,
         feedback: verification.feedback,
@@ -204,7 +258,6 @@ export async function runAgentLoop(
       },
     });
 
-    // Update memory
     const updatedHistory = [
       ...(mem.conversationHistory ?? []),
       { role: "user", content: goal, timestamp: Date.now() },
@@ -213,8 +266,18 @@ export async function runAgentLoop(
 
     await updateMemory(taskId, userId, {
       conversationHistory: updatedHistory,
-      taskState: { status: "completed", stepCount: plan.steps.length, score: verification.score },
-      context: { goal, planTitle: plan.title, completedAt: new Date().toISOString() },
+      taskState: {
+        status: "completed",
+        stepCount: plan.steps.length,
+        score: verification.score,
+        agentsInvolved: delegation.agentsInvolved,
+      },
+      context: {
+        goal,
+        planTitle: plan.title,
+        completedAt: new Date().toISOString(),
+        delegation,
+      },
     });
 
     await updateTaskStatus(taskId, "completed", {
@@ -232,6 +295,7 @@ export async function runAgentLoop(
         feedback: verification.feedback,
         suggestions: verification.suggestions,
         stepCount: stepOutputs.length,
+        agentsInvolved: delegation.agentsInvolved,
       },
     });
   } catch (err) {
