@@ -45,6 +45,7 @@ export const computerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const mode = chooseExecutionMode(input.runtimeId);
+      const capabilities = { ...RUNTIME_CATALOG[input.runtimeId] } as Record<string, boolean>;
       const session = await createComputerSession({
         userId: ctx.user.id,
         taskId: input.taskId,
@@ -54,7 +55,7 @@ export const computerRouter = router({
         mode,
         goal: input.goal,
         state: "queued",
-        capabilities: RUNTIME_CATALOG[input.runtimeId],
+        capabilities,
         metadata: { adapterWired: false },
       });
 
@@ -102,8 +103,6 @@ export const computerRouter = router({
         throw new Error(`Takeover not allowed from ${session.state}`);
       }
 
-      // Until a real runtime adapter is wired, start may only advance queued -> starting.
-      // This prevents the product from pretending a cloud/desktop computer is actually running.
       if (
         input.command === "start" &&
         session.state === "starting" &&
