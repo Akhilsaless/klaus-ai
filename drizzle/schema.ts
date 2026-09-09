@@ -146,7 +146,6 @@ export const auditEvents = mysqlTable("audit_events", {
 export type AuditEvent = typeof auditEvents.$inferSelect;
 export type InsertAuditEvent = typeof auditEvents.$inferInsert;
 
-// ─── Phase 3: Persistent Agent Execution ──────────────────────────────────────
 export const agentRuns = mysqlTable("agent_runs", {
   id: int("id").autoincrement().primaryKey(),
   taskId: int("taskId").notNull(),
@@ -183,3 +182,5 @@ export const approvalRequests = mysqlTable("approval_requests", {
 });
 export type ApprovalRequest = typeof approvalRequests.$inferSelect;
 export type InsertApprovalRequest = typeof approvalRequests.$inferInsert;
+
+export * from "./workflowSchema";
