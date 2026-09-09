@@ -15,6 +15,7 @@ import {
   registerProcessErrorHandlers,
   requestContextMiddleware,
 } from "../reliability/runtime";
+import { originGuardMiddleware, securityHeadersMiddleware } from "../reliability/security";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,18 +41,20 @@ async function startServer() {
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
   app.use(requestContextMiddleware);
+  app.use(securityHeadersMiddleware);
   registerHealthRoutes(app);
 
   app.use("/api", createRateLimitMiddleware({
     windowMs: Number(process.env.API_RATE_LIMIT_WINDOW_MS || 60_000),
     maxRequests: Number(process.env.API_RATE_LIMIT_MAX || 180),
   }));
+  app.use("/api", originGuardMiddleware);
   app.use("/api", createIdempotencyGuard({
     ttlMs: Number(process.env.IDEMPOTENCY_TTL_MS || 10 * 60_000),
   }));
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(express.json({ limit: process.env.REQUEST_BODY_LIMIT || "10mb" }));
+  app.use(express.urlencoded({ limit: process.env.REQUEST_BODY_LIMIT || "10mb", extended: true }));
 
   registerOAuthRoutes(app);
   registerAgentRoutes(app);
@@ -73,9 +76,7 @@ async function startServer() {
   const preferredPort = parseInt(process.env.PORT || "3000", 10);
   const port = await findAvailablePort(preferredPort);
 
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
-  }
+  if (port !== preferredPort) console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
 
   let shuttingDown = false;
   const shutdown = (reason: string, exitCode = 0) => {
@@ -106,9 +107,7 @@ async function startServer() {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
-  });
+  server.listen(port, () => console.log(`Server running on http://localhost:${port}/`));
 }
 
 startServer().catch(error => {
