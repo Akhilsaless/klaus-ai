@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, phase1-production-foundation]
+    branches: [main, "phase*"]
   pull_request:
     branches: [main]
 
@@ -12,7 +12,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,3 +39,6 @@ jobs:
 
       - name: Production build
         run: pnpm build
+
+      - name: Container build
+        run: docker build -t klaus-ai:ci .

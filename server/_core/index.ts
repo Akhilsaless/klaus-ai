@@ -19,19 +19,19 @@ import { originGuardMiddleware, securityHeadersMiddleware } from "../reliability
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
-    const server = net.createServer();
-    server.listen(port, () => {
-      server.close(() => resolve(true));
+    const probe = net.createServer();
+    probe.listen(port, "127.0.0.1", () => {
+      probe.close(() => resolve(true));
     });
-    server.on("error", () => resolve(false));
+    probe.on("error", () => resolve(false));
   });
 }
 
-async function findAvailablePort(startPort: number = 3000): Promise<number> {
+async function findAvailableDevPort(startPort: number = 3000): Promise<number> {
   for (let port = startPort; port < startPort + 20; port++) {
     if (await isPortAvailable(port)) return port;
   }
-  throw new Error(`No available port found starting from ${startPort}`);
+  throw new Error(`No available development port found starting from ${startPort}`);
 }
 
 async function startServer() {
@@ -67,16 +67,26 @@ async function startServer() {
     })
   );
 
-  if (process.env.NODE_ENV === "development") {
+  const isProduction = process.env.NODE_ENV === "production";
+  if (!isProduction) {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000", 10);
-  const port = await findAvailablePort(preferredPort);
+  const configuredPort = Number.parseInt(process.env.PORT || "3000", 10);
+  if (!Number.isInteger(configuredPort) || configuredPort < 1 || configuredPort > 65535) {
+    throw new Error(`Invalid PORT value: ${process.env.PORT ?? ""}`);
+  }
 
-  if (port !== preferredPort) console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  // Hosted platforms route traffic to the exact PORT they provide. Never silently
+  // move to a different port in production; fail fast instead.
+  const port = isProduction ? configuredPort : await findAvailableDevPort(configuredPort);
+  const host = process.env.HOST || "0.0.0.0";
+
+  if (!isProduction && port !== configuredPort) {
+    console.log(`Port ${configuredPort} is busy, using development port ${port} instead`);
+  }
 
   let shuttingDown = false;
   const shutdown = (reason: string, exitCode = 0) => {
@@ -107,7 +117,7 @@ async function startServer() {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
 
-  server.listen(port, () => console.log(`Server running on http://localhost:${port}/`));
+  server.listen(port, host, () => console.log(`Server running on http://${host}:${port}/`));
 }
 
 startServer().catch(error => {
