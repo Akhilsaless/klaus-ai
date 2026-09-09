@@ -3,6 +3,7 @@ import type { ComputerExecutionMode, ComputerSessionState } from "./state";
 export type ComputerRuntimeId = "cloud_browser" | "desktop_companion" | "browser_extension" | "api_tools";
 
 export interface ComputerRuntimeCapabilities {
+  [key: string]: boolean;
   visual: boolean;
   takeover: boolean;
   screenshots: boolean;
