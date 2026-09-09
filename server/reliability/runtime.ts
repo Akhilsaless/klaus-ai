@@ -72,9 +72,9 @@ export function createRateLimitMiddleware(options: {
     }
 
     if (buckets.size > 10_000) {
-      for (const [entryKey, entry] of buckets) {
+      buckets.forEach((entry, entryKey) => {
         if (entry.resetAt <= now) buckets.delete(entryKey);
-      }
+      });
     }
     next();
   };
@@ -100,9 +100,9 @@ export function createIdempotencyGuard(options: { ttlMs?: number; maxEntries?: n
 
     seen.set(composite, now + ttlMs);
     if (seen.size > maxEntries) {
-      for (const [entryKey, expiry] of seen) {
+      seen.forEach((expiry, entryKey) => {
         if (expiry <= now || seen.size > maxEntries) seen.delete(entryKey);
-      }
+      });
     }
     next();
   };
