@@ -1,268 +1,181 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import {
-  Brain,
-  Zap,
-  Shield,
-  Globe,
-  Code2,
-  FileText,
-  Mail,
-  BarChart3,
   ArrowRight,
+  Bot,
+  BrainCircuit,
   CheckCircle2,
+  Cloud,
+  Laptop,
+  Mic2,
+  MonitorSmartphone,
+  Radio,
+  ShieldCheck,
   Sparkles,
-  Play,
+  WandSparkles,
+  Workflow,
+  Zap,
 } from "lucide-react";
 
-const FEATURES = [
-  {
-    icon: Brain,
-    title: "Autonomous Planning",
-    description: "Klaus breaks down complex goals into structured execution plans automatically.",
-  },
-  {
-    icon: Zap,
-    title: "Real-Time Execution",
-    description: "Watch your tasks execute step-by-step with live progress tracking.",
-  },
-  {
-    icon: Globe,
-    title: "Web Research",
-    description: "Gather intelligence from across the web to inform every decision.",
-  },
-  {
-    icon: Code2,
-    title: "Code Generation",
-    description: "Generate production-ready code in any language, with full explanations.",
-  },
-  {
-    icon: FileText,
-    title: "File Generation",
-    description: "Create PDFs, CSVs, reports, and documents ready for immediate use.",
-  },
-  {
-    icon: Mail,
-    title: "Email Drafting",
-    description: "Craft professional, targeted emails for any business scenario.",
-  },
-  {
-    icon: BarChart3,
-    title: "Data Analysis",
-    description: "Transform raw data into actionable insights with structured reports.",
-  },
-  {
-    icon: Shield,
-    title: "Quality Verification",
-    description: "Every output is verified and scored before delivery to you.",
-  },
+const SYSTEMS = [
+  { icon: BrainCircuit, title: "One executive brain", description: "Klaus plans the goal, selects the right model, delegates to specialists and keeps context across the work." },
+  { icon: Bot, title: "Persistent agent workforce", description: "Executive, Computer, Mobile, Research, Communication, Finance, Project, Developer and Security agents." },
+  { icon: WandSparkles, title: "Teach once, reuse forever", description: "Teach Klaus a permitted workflow or use Shadow Mode to learn repeated work before you automate it." },
+  { icon: MonitorSmartphone, title: "Cross-device continuity", description: "A single control plane for desktop, Android, constrained iOS, browser and cloud execution." },
+  { icon: Mic2, title: "Voice-first control", description: "Free/local voice by default with optional premium realtime voice and platform-safe wake strategies." },
+  { icon: ShieldCheck, title: "Autonomy with guardrails", description: "Approvals, verifier checks, audit trails and per-action autonomy keep consequential actions under control." },
 ];
 
-const USE_CASES = [
-  "Generate solar leads in Australia",
-  "Build a competitor analysis report",
-  "Write a Python web scraper",
-  "Create a marketing email campaign",
-  "Analyze Q3 sales data trends",
-  "Draft a business proposal",
+const CAPABILITIES = [
+  "Delegate a multi-step goal",
+  "Teach a recurring workflow",
+  "Watch an Agent Computer session",
+  "Take control or stop execution",
+  "Move work between devices",
+  "Inspect what Klaus remembers",
 ];
 
 export default function Home() {
   const { isAuthenticated, loading } = useAuth();
   const [, navigate] = useLocation();
 
-  const handleGetStarted = () => {
-    if (isAuthenticated) {
-      navigate("/agent");
-    } else {
-      window.location.href = getLoginUrl();
-    }
+  const launch = () => {
+    if (isAuthenticated) navigate("/command-center");
+    else window.location.href = getLoginUrl();
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* ── Navigation ──────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
+    <div className="min-h-screen overflow-hidden bg-background text-foreground">
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute left-[15%] top-[-24rem] h-[48rem] w-[48rem] rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute right-[-14rem] top-[28rem] h-[36rem] w-[36rem] rounded-full bg-violet-500/10 blur-3xl" />
+      </div>
+
+      <nav className="fixed inset-x-0 top-0 z-50 border-b border-border/50 bg-background/75 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+          <button onClick={() => navigate("/")} className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+              <Sparkles className="h-4 w-4" />
             </div>
-            <span className="font-bold text-lg tracking-tight">KLAUS AI</span>
-          </div>
-          <div className="flex items-center gap-3">
-            {!loading && (
-              <>
-                {isAuthenticated ? (
-                  <Button onClick={() => navigate("/dashboard")} variant="ghost" size="sm">
-                    Dashboard
-                  </Button>
-                ) : null}
-                <Button onClick={handleGetStarted} size="sm" className="gap-2">
-                  {isAuthenticated ? "Launch Agent" : "Get Started"}
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Button>
-              </>
-            )}
-          </div>
+            <div className="text-left">
+              <div className="font-semibold tracking-tight">Klaus</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Personal AI OS</div>
+            </div>
+          </button>
+          {!loading && (
+            <div className="flex items-center gap-2">
+              {isAuthenticated && <Button variant="ghost" size="sm" onClick={() => navigate("/agent")}>AI Workspace</Button>}
+              <Button size="sm" className="gap-2" onClick={launch}>
+                {isAuthenticated ? "Open Command Center" : "Get Started"}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       </nav>
 
-      {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <section className="pt-32 pb-20 px-4">
-        <div className="container max-w-4xl mx-auto text-center">
-          <Badge variant="secondary" className="mb-6 gap-1.5 px-3 py-1 text-xs font-medium">
-            <Sparkles className="w-3 h-3 text-primary" />
-            Autonomous AI Agent Platform
-          </Badge>
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-tight">
-            Your Autonomous
-            <br />
-            <span className="text-primary">AI Workforce</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            Delegate complex goals to Klaus. It plans, executes, uses tools, and delivers
-            results — while you watch it work in real time.
-          </p>
-
-          {/* Use case examples */}
-          <div className="flex flex-wrap justify-center gap-2 mb-10">
-            {USE_CASES.map((uc) => (
-              <button
-                key={uc}
-                onClick={handleGetStarted}
-                className="px-3 py-1.5 rounded-full text-sm border border-border/60 bg-card/50 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 cursor-pointer"
-              >
-                "{uc}"
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button
-              onClick={handleGetStarted}
-              size="lg"
-              className="gap-2 px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20"
-            >
-              <Play className="w-4 h-4" />
-              Start a Task
-            </Button>
-            {isAuthenticated && (
-              <Button
-                onClick={() => navigate("/dashboard")}
-                variant="outline"
-                size="lg"
-                className="gap-2 px-8 h-12 text-base"
-              >
-                View Dashboard
+      <main className="relative">
+        <section className="px-4 pb-20 pt-32 sm:px-6 sm:pt-40 lg:pb-28">
+          <div className="mx-auto max-w-6xl text-center">
+            <Badge variant="secondary" className="mb-6 gap-2 px-3 py-1.5 text-xs">
+              <Radio className="h-3.5 w-3.5 text-primary" />
+              One AI operating system for your work
+            </Badge>
+            <h1 className="mx-auto max-w-5xl text-5xl font-semibold leading-[0.98] tracking-[-0.05em] sm:text-7xl lg:text-[88px]">
+              Teach Klaus how you work.
+              <span className="mt-2 block text-primary">Then delegate the outcome.</span>
+            </h1>
+            <p className="mx-auto mt-7 max-w-3xl text-base leading-7 text-muted-foreground sm:text-xl sm:leading-8">
+              Klaus is a permission-based AI operating system that plans, delegates, learns repeatable workflows, coordinates specialist agents and keeps work moving across your apps and devices.
+            </p>
+            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Button size="lg" className="h-12 gap-2 px-7 text-base shadow-xl shadow-primary/20" onClick={launch}>
+                <Zap className="h-4 w-4" />
+                {isAuthenticated ? "Enter Command Center" : "Start with Klaus"}
               </Button>
-            )}
-          </div>
-        </div>
-      </section>
+              {isAuthenticated && (
+                <Button size="lg" variant="outline" className="h-12 gap-2 px-7 text-base" onClick={() => navigate("/agent")}>
+                  <Bot className="h-4 w-4" /> Delegate a task
+                </Button>
+              )}
+            </div>
 
-      {/* ── How It Works ────────────────────────────────────────────────── */}
-      <section className="py-20 border-t border-border/30">
-        <div className="container max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">How Klaus Works</h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              A five-stage autonomous loop that handles everything from planning to verification.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-            {[
-              { step: "01", label: "Understand", desc: "Parses your goal and context" },
-              { step: "02", label: "Plan", desc: "Breaks it into executable steps" },
-              { step: "03", label: "Execute", desc: "Runs each step with the right tool" },
-              { step: "04", label: "Verify", desc: "Validates output quality" },
-              { step: "05", label: "Deliver", desc: "Returns files, reports, and results" },
-            ].map((item, i) => (
-              <div key={i} className="relative">
-                <div className="bg-card border border-border rounded-xl p-5 text-center h-full">
-                  <div className="text-xs font-mono text-primary mb-2">{item.step}</div>
-                  <div className="font-semibold mb-1">{item.label}</div>
-                  <div className="text-xs text-muted-foreground">{item.desc}</div>
+            <div className="mx-auto mt-12 grid max-w-5xl gap-3 text-left sm:grid-cols-2 lg:grid-cols-3">
+              {CAPABILITIES.map((item) => (
+                <div key={item} className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/55 px-4 py-3 text-sm backdrop-blur-lg">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                  {item}
                 </div>
-                {i < 4 && (
-                  <div className="hidden sm:flex absolute top-1/2 -right-2 -translate-y-1/2 z-10">
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features ────────────────────────────────────────────────────── */}
-      <section className="py-20 border-t border-border/30">
-        <div className="container max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Everything You Need</h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              A complete toolkit for autonomous task execution, built into a single platform.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {FEATURES.map((feature) => (
-              <div
-                key={feature.title}
-                className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <feature.icon className="w-5 h-5 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ─────────────────────────────────────────────────────────── */}
-      <section className="py-20 border-t border-border/30">
-        <div className="container max-w-3xl mx-auto text-center">
-          <div className="bg-card border border-border rounded-2xl p-10 sm:p-14">
-            <div className="flex justify-center gap-1 mb-6">
-              {[...Array(5)].map((_, i) => (
-                <CheckCircle2 key={i} className="w-5 h-5 text-primary" />
               ))}
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Ready to delegate your work?
-            </h2>
-            <p className="text-muted-foreground text-lg mb-8 max-w-lg mx-auto">
-              Type your goal. Klaus handles the rest — research, code, files, analysis, and more.
-            </p>
-            <Button
-              onClick={handleGetStarted}
-              size="lg"
-              className="gap-2 px-10 h-12 text-base font-semibold shadow-lg shadow-primary/20"
-            >
-              <Sparkles className="w-4 h-4" />
-              Launch Klaus AI
-            </Button>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border/30 py-8">
-        <div className="container flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
-              <Sparkles className="w-3 h-3 text-primary-foreground" />
+        <section className="border-y border-border/40 bg-card/25 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-12 max-w-3xl">
+              <p className="text-xs uppercase tracking-[0.24em] text-primary">Klaus architecture</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">Not another chatbot. A control layer for getting work done.</h2>
+              <p className="mt-4 text-sm leading-6 text-muted-foreground sm:text-base">Klaus uses the right intelligence for the task, prefers free or low-cost models for routine work, and reserves optional advanced models for jobs that actually need them.</p>
             </div>
-            <span className="font-semibold text-foreground">KLAUS AI</span>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {SYSTEMS.map(({ icon: Icon, title, description }) => (
+                <div key={title} className="group rounded-2xl border border-border/60 bg-background/55 p-6 backdrop-blur-xl transition-colors hover:border-primary/35 hover:bg-primary/[0.035]">
+                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-medium">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <span>Your Autonomous AI Workforce</span>
+        </section>
+
+        <section className="px-4 py-20 sm:px-6 lg:py-28">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <Badge variant="outline" className="gap-2"><Workflow className="h-3.5 w-3.5" /> Teach → Review → Run</Badge>
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-5xl">Show Klaus the workflow once.</h2>
+              <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">Start an explicit Teach session, perform the permitted workflow, review what Klaus learned, then save it as a reusable Skill. Shadow Mode can observe without acting first.</p>
+              <div className="mt-7 flex flex-wrap gap-2 text-sm">
+                {["Explicit recording", "Sensitive-value redaction", "Editable steps", "Approval gates", "Reusable Skills"].map((item) => <Badge key={item} variant="secondary">{item}</Badge>)}
+              </div>
+            </div>
+            <div className="rounded-3xl border border-border/60 bg-card/65 p-5 shadow-2xl shadow-black/15 backdrop-blur-xl sm:p-7">
+              <div className="mb-5 flex items-center justify-between">
+                <div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10"><WandSparkles className="h-4 w-4 text-primary" /></div><div><div className="text-sm font-medium">Monday Operations Report</div><div className="text-xs text-muted-foreground">Teach session example</div></div></div>
+                <Badge variant="outline">Review required</Badge>
+              </div>
+              <div className="space-y-2">
+                {["Open permitted inbox and collect report attachments", "Extract the required project values", "Update the approved reporting workbook", "Generate management summary", "Prepare email draft for approval"].map((step, index) => (
+                  <div key={step} className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/40 p-3">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-medium text-primary">{index + 1}</div>
+                    <span className="text-sm text-muted-foreground">{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t border-border/40 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-5xl rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/[0.1] via-card/70 to-violet-500/[0.08] p-8 text-center backdrop-blur-xl sm:p-14">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Cloud className="h-5 w-5" /></div>
+            <h2 className="mt-6 text-3xl font-semibold tracking-tight sm:text-5xl">Your agents keep the context. You keep control.</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Move work between desktop, mobile, browser and cloud sessions, inspect the action history, and stop or take over when a connected runtime supports it.</p>
+            <Button size="lg" className="mt-8 gap-2" onClick={launch}>{isAuthenticated ? "Open Klaus" : "Get Started"}<ArrowRight className="h-4 w-4" /></Button>
+          </div>
+        </section>
+      </main>
+
+      <footer className="relative border-t border-border/40 py-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
+          <div className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5 text-primary" /><span className="font-medium text-foreground">Klaus</span><span>Personal AI Operating System</span></div>
+          <div className="flex items-center gap-2"><Laptop className="h-3.5 w-3.5" /> Desktop <span>·</span> <MonitorSmartphone className="h-3.5 w-3.5" /> Mobile <span>·</span> <Cloud className="h-3.5 w-3.5" /> Cloud</div>
         </div>
       </footer>
     </div>

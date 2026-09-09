@@ -6,7 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import AgentChat from "./pages/AgentChat";
+import AgentWorkspace from "./pages/AgentWorkspace";
 import CommandCenter from "./pages/CommandCenter";
 import TaskDetail from "./pages/TaskDetail";
 
@@ -16,7 +16,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/command-center" component={CommandCenter} />
       <Route path="/dashboard" component={Dashboard} />
-      <Route path="/agent" component={AgentChat} />
+      <Route path="/agent" component={AgentWorkspace} />
       <Route path="/task/:id" component={TaskDetail} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
