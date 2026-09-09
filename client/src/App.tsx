@@ -7,12 +7,14 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import AgentChat from "./pages/AgentChat";
+import CommandCenter from "./pages/CommandCenter";
 import TaskDetail from "./pages/TaskDetail";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/command-center" component={CommandCenter} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/agent" component={AgentChat} />
       <Route path="/task/:id" component={TaskDetail} />
