@@ -25,6 +25,9 @@ import {
 import { decideProvider, getProviderHealth } from "./ai/router";
 import { getProviderDefinitions } from "./ai/registry";
 import { getAIUsageSummary, getRecentAIUsage } from "./ai/telemetry";
+import { getAgentCatalog } from "./agents/catalog";
+import { buildDelegationPlan } from "./agents/orchestrator";
+import { decideActionPolicy } from "./agents/policy";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -39,19 +42,14 @@ export const appRouter = router({
     }),
   }),
 
-  // ─── Tasks ─────────────────────────────────────────────────────────────────
   tasks: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return getTasksByUserId(ctx.user.id);
-    }),
+    list: protectedProcedure.query(async ({ ctx }) => getTasksByUserId(ctx.user.id)),
 
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const task = await getTaskById(input.id);
-        if (!task || task.userId !== ctx.user.id) {
-          throw new Error("Task not found");
-        }
+        if (!task || task.userId !== ctx.user.id) throw new Error("Task not found");
         return task;
       }),
 
@@ -82,14 +80,8 @@ export const appRouter = router({
     create: protectedProcedure
       .input(z.object({ goal: z.string().min(1).max(2000) }))
       .mutation(async ({ ctx, input }) => {
-        const title =
-          input.goal.length > 60 ? input.goal.substring(0, 57) + "..." : input.goal;
-        const task = await createTask({
-          userId: ctx.user.id,
-          title,
-          goal: input.goal,
-          status: "pending",
-        });
+        const title = input.goal.length > 60 ? input.goal.substring(0, 57) + "..." : input.goal;
+        const task = await createTask({ userId: ctx.user.id, title, goal: input.goal, status: "pending" });
         await createChatMessage({
           taskId: task?.id,
           userId: ctx.user.id,
@@ -105,29 +97,76 @@ export const appRouter = router({
         const task = await getTaskById(input.id);
         if (!task || task.userId !== ctx.user.id) throw new Error("Task not found");
         await deleteTask(input.id);
-        return { success: true };
+        return { success: true } as const;
       }),
   }),
 
-  // ─── Chat ──────────────────────────────────────────────────────────────────
   chat: router({
-    getMessages: protectedProcedure.query(async ({ ctx }) => {
-      return getChatMessagesByUserId(ctx.user.id, 200);
-    }),
-
+    getMessages: protectedProcedure.query(async ({ ctx }) => getChatMessagesByUserId(ctx.user.id, 200)),
     sendMessage: protectedProcedure
       .input(z.object({ content: z.string().min(1), taskId: z.number().optional() }))
-      .mutation(async ({ ctx, input }) => {
-        return createChatMessage({
+      .mutation(async ({ ctx, input }) =>
+        createChatMessage({
           userId: ctx.user.id,
           taskId: input.taskId,
           role: "user",
           content: input.content,
-        });
-      }),
+        })
+      ),
   }),
 
-  // ─── Super Admin AI Brain ──────────────────────────────────────────────────
+  // Real-agent control plane. Execution is still handled by the existing task loop,
+  // now with specialist delegation and verifier metadata.
+  agents: router({
+    catalog: protectedProcedure.query(() => getAgentCatalog()),
+
+    delegationPreview: protectedProcedure
+      .input(
+        z.object({
+          steps: z.array(
+            z.object({
+              stepIndex: z.number().int().min(0),
+              title: z.string().min(1).max(512),
+              description: z.string().max(2000).optional(),
+              tool: z.enum([
+                "web_research",
+                "code_generator",
+                "file_generator",
+                "email_generator",
+                "data_analysis",
+                "text_writer",
+              ]),
+            })
+          ).min(1).max(20),
+        })
+      )
+      .query(({ input }) => buildDelegationPlan(input.steps)),
+
+    policyPreview: protectedProcedure
+      .input(
+        z.object({
+          agentId: z.enum([
+            "executive",
+            "computer",
+            "mobile",
+            "research",
+            "communication",
+            "finance",
+            "project",
+            "developer",
+            "security",
+          ]),
+          autonomy: z.enum(["observe", "suggest", "prepare", "approval", "autonomous", "delegated"]),
+          risk: z.enum(["low", "medium", "high", "critical"]),
+          externalSideEffect: z.boolean().optional(),
+          financial: z.boolean().optional(),
+          destructive: z.boolean().optional(),
+          credentialAccess: z.boolean().optional(),
+        })
+      )
+      .query(({ input }) => decideActionPolicy(input)),
+  }),
+
   aiAdmin: router({
     providerHealth: superAdminProcedure.query(() => getProviderHealth()),
     providerRegistry: superAdminProcedure.query(() => getProviderDefinitions()),
@@ -158,14 +197,7 @@ export const appRouter = router({
           privacy: z.enum(["standard", "sensitive", "local_preferred"]).optional(),
           requireCapabilities: z
             .array(
-              z.enum([
-                "text",
-                "json",
-                "reasoning",
-                "verification",
-                "computer_use",
-                "realtime_voice",
-              ])
+              z.enum(["text", "json", "reasoning", "verification", "computer_use", "realtime_voice"])
             )
             .max(6)
             .optional(),
@@ -181,9 +213,7 @@ export const appRouter = router({
         })
       ),
 
-    providerConfigs: superAdminProcedure.query(async () => {
-      return listAIProviderConfigs();
-    }),
+    providerConfigs: superAdminProcedure.query(async () => listAIProviderConfigs()),
 
     upsertProviderConfig: superAdminProcedure
       .input(
